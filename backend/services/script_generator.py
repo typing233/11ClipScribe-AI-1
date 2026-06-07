@@ -148,6 +148,9 @@ def _parse_script(content: str, video_duration: float) -> List[ScriptSegment]:
         else:
             raise ValueError(f"Failed to parse LLM output as JSON. Raw output:\n{content[:500]}")
 
+    if not segments_data:
+        raise ValueError("LLM returned empty script (no segments)")
+
     segments = []
     for seg in segments_data:
         start = float(seg["start"])
@@ -155,8 +158,88 @@ def _parse_script(content: str, video_duration: float) -> List[ScriptSegment]:
         segments.append(ScriptSegment(
             text=seg["text"],
             start_time=start,
-            end_time=min(end, video_duration),
-            duration=min(end, video_duration) - start
+            end_time=end,
+            duration=end - start
         ))
+
+    return _validate_and_fix_timeline(segments, video_duration)
+
+
+def _validate_and_fix_timeline(
+    segments: List[ScriptSegment], video_duration: float
+) -> List[ScriptSegment]:
+    """
+    Validate and repair the script timeline. Rules:
+    - Segments must be in chronological order
+    - No negative duration segments
+    - No start < 0 or end > video_duration
+    - No overlapping segments (auto-fix by clamping)
+    - Must cover at least 50% of video duration (fail otherwise)
+    - First segment should start near 0, last should end near video_duration
+    """
+    # Sort by start_time
+    segments = sorted(segments, key=lambda s: s.start_time)
+
+    # Remove invalid segments (negative duration, empty text)
+    segments = [s for s in segments if s.end_time > s.start_time and s.text.strip()]
+
+    if not segments:
+        raise ValueError("No valid segments after filtering (all had invalid time ranges)")
+
+    # Clamp to video bounds
+    fixed = []
+    for seg in segments:
+        start = max(0.0, seg.start_time)
+        end = min(video_duration, seg.end_time)
+        if end <= start:
+            continue
+        fixed.append(ScriptSegment(
+            text=seg.text,
+            start_time=start,
+            end_time=end,
+            duration=end - start
+        ))
+    segments = fixed
+
+    if not segments:
+        raise ValueError("No valid segments after clamping to video duration bounds")
+
+    # Fix overlaps: if seg[i].end > seg[i+1].start, clamp seg[i].end
+    for i in range(len(segments) - 1):
+        if segments[i].end_time > segments[i + 1].start_time:
+            clamped_end = segments[i + 1].start_time
+            if clamped_end <= segments[i].start_time:
+                raise ValueError(
+                    f"Segment {i} and {i+1} have irreconcilable overlap: "
+                    f"[{segments[i].start_time}-{segments[i].end_time}] vs "
+                    f"[{segments[i+1].start_time}-{segments[i+1].end_time}]"
+                )
+            segments[i] = ScriptSegment(
+                text=segments[i].text,
+                start_time=segments[i].start_time,
+                end_time=clamped_end,
+                duration=clamped_end - segments[i].start_time
+            )
+
+    # Check coverage: total segment time should be >= 50% of video
+    total_coverage = sum(s.duration for s in segments)
+    if total_coverage < video_duration * 0.3:
+        raise ValueError(
+            f"Script coverage too low: segments cover {total_coverage:.1f}s "
+            f"out of {video_duration:.1f}s video ({total_coverage/video_duration*100:.0f}%). "
+            f"Need at least 30% coverage."
+        )
+
+    # Check first/last segment boundaries
+    if segments[0].start_time > video_duration * 0.25:
+        raise ValueError(
+            f"First segment starts too late at {segments[0].start_time:.1f}s "
+            f"(video is {video_duration:.1f}s). Script does not cover beginning of video."
+        )
+    if segments[-1].end_time < video_duration * 0.75:
+        raise ValueError(
+            f"Last segment ends too early at {segments[-1].end_time:.1f}s "
+            f"(video is {video_duration:.1f}s). Script does not cover end of video."
+        )
 
     return segments
