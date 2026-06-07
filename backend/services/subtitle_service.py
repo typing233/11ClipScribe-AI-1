@@ -15,21 +15,21 @@ def get_audio_duration(audio_path: str) -> float:
 
 
 def generate_srt(segments: List[ScriptSegment], audio_files: List[str], srt_path: str) -> str:
-    """Generate SRT subtitle file with timing adjusted to actual audio duration."""
+    """
+    Generate SRT subtitle file.
+    Each subtitle starts at segment.start_time and lasts for the actual audio duration.
+    """
     lines = []
-    current_time = 0.0
 
     for i, (segment, audio_file) in enumerate(zip(segments, audio_files)):
         audio_dur = get_audio_duration(audio_file)
-        start = current_time
-        end = current_time + audio_dur
+        start = segment.start_time
+        end = min(segment.start_time + audio_dur, segment.end_time)
 
         lines.append(str(i + 1))
         lines.append(f"{_format_time(start)} --> {_format_time(end)}")
         lines.append(segment.text)
         lines.append("")
-
-        current_time = end
 
     with open(srt_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))

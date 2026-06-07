@@ -57,7 +57,7 @@ def run_pipeline(
         concat_audio_with_padding(audio_files, segments, merged_audio, duration)
 
         output_file = str(work_dir / "final_output.mp4")
-        compose_final_video(video_path, merged_audio, srt_path, output_file)
+        compose_final_video(video_path, merged_audio, srt_path, output_file, target_duration=duration)
 
         if status_callback:
             status_callback(TaskStatus.COMPLETED, 100, "处理完成！", output_file)
