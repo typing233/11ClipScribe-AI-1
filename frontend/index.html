@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClipScribe AI - 影视解说视频生成</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ClipScribe AI</h1>
+            <p class="subtitle">影视解说视频自动生成工具</p>
+        </header>
+
+        <main>
+            <section class="upload-section" id="uploadSection">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <p>拖拽视频文件到此处，或点击选择文件</p>
+                    <p class="hint">支持 MP4/MKV/AVI，最大 500MB</p>
+                    <input type="file" id="fileInput" accept="video/*" hidden>
+                </div>
+
+                <div class="file-info" id="fileInfo" hidden>
+                    <span id="fileName"></span>
+                    <button class="btn-clear" id="clearFile">✕</button>
+                </div>
+
+                <div class="form-group">
+                    <label for="hintInput">影片信息补充（可选）</label>
+                    <textarea id="hintInput" placeholder="例如：这是电影《肖申克的救赎》中安迪逃出监狱的片段..."></textarea>
+                </div>
+
+                <button class="btn-primary" id="submitBtn" disabled>开始生成解说视频</button>
+            </section>
+
+            <section class="progress-section" id="progressSection" hidden>
+                <div class="progress-card">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p class="progress-text" id="progressText">准备中...</p>
+                    <p class="progress-percent" id="progressPercent">0%</p>
+                </div>
+            </section>
+
+            <section class="result-section" id="resultSection" hidden>
+                <div class="result-card success" id="successCard" hidden>
+                    <h3>✅ 生成完成</h3>
+                    <a class="btn-download" id="downloadLink" href="#">下载解说视频</a>
+                    <button class="btn-secondary" id="newTaskBtn">生成新视频</button>
+                </div>
+                <div class="result-card error" id="errorCard" hidden>
+                    <h3>❌ 生成失败</h3>
+                    <p id="errorText"></p>
+                    <button class="btn-secondary" id="retryBtn">重试</button>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
